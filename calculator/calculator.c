@@ -11,6 +11,10 @@ char popO();
 int priority(char ex);
 int calculate(int num1,int num2,char op);
 int eval(char *exp);
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 
 int numS[MAX_SIZE];
 int topn=-1;
