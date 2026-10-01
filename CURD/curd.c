@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define userFile "users.txt"
+
+void CreateFile();
 void CreateUser();
 void DisplayUser();
 void UpdateUser();
@@ -13,6 +16,7 @@ struct User{
 };
 
 int main(){
+    CreateFile();
     int choice=0;
     while(choice!=5){
         printf("Enter Choice\n1. Add User\n2. Display User\n3. Update User\n4. Delete User\n5. Exit\n");
@@ -41,9 +45,16 @@ int main(){
 }
     return 0;
 }
+
+
+void CreateFile(){
+    FILE *fp = fopen(userFile, "a");
+    if (fp != NULL) fclose(fp);
+}
+
 void CreateUser(){
             struct User user;
-            FILE*fp=fopen("user.txt","a");
+            FILE*fp=fopen(userFile,"a");
             if(fp==NULL){
                 printf("Not opening \n");
                 return;
@@ -61,7 +72,7 @@ void CreateUser(){
 
 void DisplayUser(){
     struct User user;
-    FILE*fp=fopen("user.txt","r");
+    FILE*fp=fopen(userFile,"r");
     if(fp==NULL){
         printf("Not opening \n");
         return;
@@ -76,7 +87,7 @@ void DeleteUser(){
     int id,found=0;
     printf("Enter ID to delete:\n");
     scanf("%d",&id);
-    FILE *fp=fopen("user.txt","r");
+    FILE *fp=fopen(userFile,"r");
     if(fp==NULL){
         printf("Not opening \n");
         return;
@@ -96,20 +107,21 @@ void DeleteUser(){
     }
     fclose(fp);
     fclose(temp);
-    remove("user.txt");
-    rename("temp.txt","user.txt");
+    remove(userFile);
+    rename("temp.txt",userFile);
     if(found){
         printf("User deleted successfully.\n");
     } else {
         printf("User not found.\n");
     }
+    // fclose(fp);
 }
 void UpdateUser(){
     struct User user;
     int id,found=0;
     printf("Enter Id to update:\n");
     scanf("%d",&id);
-    FILE *fp=fopen("user.txt","r");
+    FILE *fp=fopen(userFile,"r");
     if(fp==NULL){
         printf("Not opening \n");
         return;
@@ -134,16 +146,16 @@ void UpdateUser(){
         else{
             fprintf(temp,"%d %s %d\n",user.id,user.name,user.age);
         }
-        fclose(fp);
     }
-        fclose(temp);
-        remove("user.txt");
-        rename("temp.txt","user.txt");
-        if(found){
-            printf("User updated successfully.\n");
-        } else {
-            printf("User not found.\n");
-        }
+    fclose(fp);
+    fclose(temp);
+    remove(userFile);
+    rename("temp.txt",userFile);
+    if(found){
+        printf("User updated successfully.\n");
+    } else {
+        printf("User not found.\n");
+    }
 
 
 }
