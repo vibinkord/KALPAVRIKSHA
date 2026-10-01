@@ -8,6 +8,7 @@ void CreateUser();
 void DisplayUser();
 void UpdateUser();
 void DeleteUser();
+int IdExists(int id);
 
 struct User{
     int userId;
@@ -44,7 +45,22 @@ int main(){
     }
     return 0;
 }
-
+int IdExists(int id){
+    struct User user;
+    FILE *userFileHandle=fopen(userFile,"r");
+    if(userFileHandle==NULL){
+        printf("Not opening \n");
+        return 0;
+    }
+    while(fscanf(userFileHandle,"%d %s %d",&user.userId,user.userName,&user.userAge)==3){
+        if(id==user.userId){
+            fclose(userFileHandle);
+            return 1;
+        }
+    }
+    fclose(userFileHandle);
+    return 0;
+}
 void CreateFile(){
     FILE *userFileHandle = fopen(userFile, "a");
     if (userFileHandle != NULL) fclose(userFileHandle);
@@ -59,6 +75,10 @@ void CreateUser(){
     }
     printf("Add User\nEnter ID, Name, Age:\n");
     scanf("%d",&user.userId);
+    if(IdExists(user.userId)){
+        printf("ID already exists.\n");
+        return;
+    }
     scanf("%s",user.userName);
     scanf("%d",&user.userAge);
     fprintf(userFileHandle,"%d %s %d\n",user.userId,user.userName,user.userAge);
