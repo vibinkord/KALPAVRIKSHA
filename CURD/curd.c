@@ -8,154 +8,171 @@ void CreateUser();
 void DisplayUser();
 void UpdateUser();
 void DeleteUser();
+int IdExists(int id);
 
 struct User{
-    int id;
-    char name[50];
-    int age;
+    int userId;
+    char userName[50];
+    int userAge;
 };
 
 int main(){
     CreateFile();
-    int choice=0;
-    while(choice!=5){
+    int Choice=0;
+    while(Choice!=5){
         printf("Enter Choice\n1. Add User\n2. Display User\n3. Update User\n4. Delete User\n5. Exit\n");
-        scanf("%d",&choice);
-        switch(choice){
+        scanf("%d",&Choice);
+        switch(Choice){
             case 1:
-            CreateUser();
-            break;
-        case 2:
-            DisplayUser();
-            break;
-        case 3:
-            UpdateUser();
-            break;
-        case 4:
-            DeleteUser();
-            break;
-        case 5:
-            printf("Exit\n");
-
-            break;
-        default:
-            printf("Invalid choice\n");
-            break;
+                CreateUser();
+                break;
+            case 2:
+                DisplayUser();
+                break;
+            case 3:
+                UpdateUser();
+                break;
+            case 4:
+                DeleteUser();
+                break;
+            case 5:
+                printf("Exit\n");
+                break;
+            default:
+                printf("Invalid choice\n");
+                break;
+        }
     }
-}
     return 0;
 }
-
-
+int IdExists(int id){
+    struct User user;
+    FILE *userFileHandle=fopen(userFile,"r");
+    if(userFileHandle==NULL){
+        printf("Not opening \n");
+        return 0;
+    }
+    while(fscanf(userFileHandle,"%d %s %d",&user.userId,user.userName,&user.userAge)==3){
+        if(id==user.userId){
+            fclose(userFileHandle);
+            return 1;
+        }
+    }
+    fclose(userFileHandle);
+    return 0;
+}
 void CreateFile(){
-    FILE *fp = fopen(userFile, "a");
-    if (fp != NULL) fclose(fp);
+    FILE *userFileHandle = fopen(userFile, "a");
+    if (userFileHandle != NULL) fclose(userFileHandle);
 }
 
 void CreateUser(){
-            struct User user;
-            FILE*fp=fopen(userFile,"a");
-            if(fp==NULL){
-                printf("Not opening \n");
-                return;
-            }
-            printf("Add User\nEnter ID, Name, Age:\n");
-            scanf("%d",&user.id);
-            scanf("%s",user.name);
-            scanf("%d",&user.age);
-            // printf("User Added: ID=%d, Name=%s, Age=%d\n",user.id,user.name,user.age);
-            fprintf(fp,"%d %s %d\n",user.id,user.name,user.age);
-            fclose(fp);
-            printf("User added successfully.\n");
-
+    struct User user;
+    FILE *userFileHandle=fopen(userFile,"a");
+    if(userFileHandle==NULL){
+        printf("Not opening \n");
+        return;
+    }
+    printf("Add User\nEnter ID, Name, Age:\n");
+    scanf("%d",&user.userId);
+    if(IdExists(user.userId)){
+        printf("ID already exists.\n");
+        return;
+    }
+    scanf("%s",user.userName);
+    scanf("%d",&user.userAge);
+    fprintf(userFileHandle,"%d %s %d\n",user.userId,user.userName,user.userAge);
+    fclose(userFileHandle);
+    printf("User added successfully.\n");
 }
 
 void DisplayUser(){
     struct User user;
-    FILE*fp=fopen(userFile,"r");
-    if(fp==NULL){
+    FILE *userFileHandle=fopen(userFile,"r");
+    if(userFileHandle==NULL){
         printf("Not opening \n");
         return;
     }
-    while (fscanf(fp, "%d %s %d", &user.id, user.name, &user.age) == 3) {
-    printf("User: ID=%d, Name=%s, Age=%d\n", user.id, user.name, user.age);
+    while(fscanf(userFileHandle,"%d %s %d",&user.userId,user.userName,&user.userAge)==3){
+        printf("User: ID=%d, Name=%s, Age=%d\n",user.userId,user.userName,user.userAge);
+    }
+    fclose(userFileHandle);
 }
-fclose(fp);
-}
+
 void DeleteUser(){
     struct User user;
-    int id,found=0;
+    int targetUserId;
+    int isUserFound=0;
     printf("Enter ID to delete:\n");
-    scanf("%d",&id);
-    FILE *fp=fopen(userFile,"r");
-    if(fp==NULL){
+    scanf("%d",&targetUserId);
+    FILE *userFileHandle=fopen(userFile,"r");
+    if(userFileHandle==NULL){
         printf("Not opening \n");
         return;
     }
-    FILE *temp=fopen("temp.txt","w");
-    if(temp==NULL){
+    FILE *tempFileHandle=fopen("temp.txt","w");
+    if(tempFileHandle==NULL){
         printf("Not opening\n");
         return;
     }
-    while(fscanf(fp,"%d %s %d",&user.id,user.name,&user.age)==3){
-        if(id==user.id){
-            found=1;
+    while(fscanf(userFileHandle,"%d %s %d",&user.userId,user.userName,&user.userAge)==3){
+        if(targetUserId==user.userId){
+            isUserFound=1;
         }
         else{
-            fprintf(temp,"%d %s %d\n",user.id,user.name,user.age);
+            fprintf(tempFileHandle,"%d %s %d\n",user.userId,user.userName,user.userAge);
         }
     }
-    fclose(fp);
-    fclose(temp);
+    fclose(userFileHandle);
+    fclose(tempFileHandle);
     remove(userFile);
     rename("temp.txt",userFile);
-    if(found){
+    if(isUserFound){
         printf("User deleted successfully.\n");
     } else {
         printf("User not found.\n");
     }
-    // fclose(fp);
 }
+
 void UpdateUser(){
     struct User user;
-    int id,found=0;
+    int targetUserId;
+    int isUserFound=0;
     printf("Enter Id to update:\n");
-    scanf("%d",&id);
-    FILE *fp=fopen(userFile,"r");
-    if(fp==NULL){
+    scanf("%d",&targetUserId);
+    FILE *userFileHandle=fopen(userFile,"r");
+    if(userFileHandle==NULL){
         printf("Not opening \n");
         return;
     }
-    FILE *temp=fopen("temp.txt","w");
-    if(temp==NULL){
+    FILE *tempFileHandle=fopen("temp.txt","w");
+    if(tempFileHandle==NULL){
         printf("Not opening\n");
         return;
     }
-    while(fscanf(fp,"%d %s %d",&user.id,user.name,&user.age)==3){
-        if(id==user.id){
-            found=1;
-            int age;
-            char name[50];
+    while(fscanf(userFileHandle,"%d %s %d",&user.userId,user.userName,&user.userAge)==3){
+        if(targetUserId==user.userId){
+            isUserFound=1;
+            int newAge;
+            char newName[50];
             printf("Enter new Name and Age:\n");
-            scanf("%s",name);
-            scanf("%d",&age);
-            user.age=age;
-            strcpy(user.name,name);
-            fprintf(temp,"%d %s %d\n",user.id,user.name,user.age);
+            scanf("%s",newName);
+            scanf("%d",&newAge);
+            user.userAge=newAge;
+            strcpy(user.userName,newName);
+            fprintf(tempFileHandle,"%d %s %d\n",user.userId,user.userName,user.userAge);
         }
         else{
-            fprintf(temp,"%d %s %d\n",user.id,user.name,user.age);
+            fprintf(tempFileHandle,"%d %s %d\n",user.userId,user.userName,user.userAge);
         }
     }
-    fclose(fp);
-    fclose(temp);
+    fclose(userFileHandle);
+    fclose(tempFileHandle);
     remove(userFile);
     rename("temp.txt",userFile);
-    if(found){
+    if(isUserFound){
         printf("User updated successfully.\n");
     } else {
         printf("User not found.\n");
     }
-
-
 }
