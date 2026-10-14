@@ -11,11 +11,17 @@ int main(){
     int TicketCategory;
     char TicketCategoryName[20];
     float price=0.0;
-    scanf("%s",name);
-    scanf("%d",&TicketCount);
-    scanf("%d",&TicketCategory);
+    if (scanf("%99s", name) != 1){
+        printf("Invalid Customer Name\n");
+        return 0;
+    }
+    if((scanf("%d",&TicketCount)!=1)||(scanf("%d",&TicketCategory) !=1)){
+        printf("Invalid Input\n");
+        return 0;
+    }
+    
     if(TicketCount<=0||TicketCount>20){
-        printf("Invalid Ticket Count");
+        printf("Invalid Ticket Count\n");
         return 0;
     }
     switch(TicketCategory){
@@ -32,12 +38,12 @@ int main(){
             strcpy(TicketCategoryName,"Recliner");
             break;
         default:
-            printf("Invalid Ticket Category");
+            printf("Invalid Ticket Category\n");
             return 0;
     }
     float discount=0;
     if(TicketCount>=5){
-        discount=(float)price*10/100;
+        discount=price/10.0f;
     }
     printf("Customer: %s\n",name);
     printf("Ticket Category: %s\n",TicketCategoryName);
