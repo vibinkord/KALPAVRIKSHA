@@ -1,6 +1,6 @@
 #include<stdio.h>
-#include<string.h>
 #include<stdlib.h>
+#include<string.h>
 
 #define MAX_EMP 100
 #define MAX_REPORTS 10
@@ -40,7 +40,7 @@ int main(){
 
     int count=0;
     Employee emp[MAX_EMP];
-    initialEmployee(emp, &count);
+    // initialEmployee(emp, &count);
     while(1){
         printf("\n");
         printf("1. Add Employee\n");
