@@ -91,6 +91,81 @@ long find_block(size_t size){
     return worst_fit(size);
 }
 
+int ensure_capacity(){
+    if(block_count<block_capacity){
+        return 0;
+    }
+    struct Memory *tmp=realloc(blocks,block_capacity*2*sizeof(struct Memory));
+    if(tmp==NULL){
+        printf("Memory allocation failed\n");
+        return -1;
+    }
+    blocks=tmp;
+    block_capacity*=2;
+    return 0;
+}
+
+void insert_free_block(size_t pos,size_t start,size_t size){
+    for(size_t i=block_count;i>pos;i--){
+        blocks[i]=blocks[i-1];
+    }
+    blocks[pos].start_offset=start;
+    blocks[pos].size=size;
+    blocks[pos].allocationId=0;
+    blocks[pos].status=0;
+    block_count++;
+}
+
+void remove_block(size_t pos){
+    for(size_t i=pos;i+1<block_count;i++){
+        blocks[i]=blocks[i+1];
+    }
+    block_count--;
+}
+
+void display_stats(){
+    size_t allocated_bytes=0, free_bytes=0;
+    size_t allocated_blocks=0, free_blocks=0;
+    size_t largest_free=0;
+    for(size_t i=0;i<block_count;i++){
+        if(blocks[i].status==1){
+            allocated_bytes+=blocks[i].size;
+            allocated_blocks++;
+        } else {
+            free_bytes+=blocks[i].size;
+            free_blocks++;
+            if(blocks[i].size>largest_free){
+                largest_free=blocks[i].size;
+            }
+        }
+    }
+    printf("Total memory: %zu bytes\n",pool_size);
+    printf("Allocated: %zu bytes\n",allocated_bytes);
+    printf("Free: %zu bytes\n",free_bytes);
+    printf("Allocated blocks: %zu\n",allocated_blocks);
+    printf("Free blocks: %zu\n",free_blocks);
+    printf("Largest free block: %zu bytes\n",largest_free);
+}
+
+void report_fragmentation(size_t size){
+    size_t total_free=0;
+    for(size_t i=0;i<block_count;i++){
+        if(blocks[i].status==0){
+            total_free+=blocks[i].size;
+        }
+    }
+    if(total_free>=size){
+        printf("Note: The request for %zu bytes failed even though %zu bytes are free, because the free memory is fragmented.\n",size,total_free);
+        printf("Free blocks:");
+        for(size_t i=0;i<block_count;i++){
+            if(blocks[i].status==0){
+                printf(" [Start: %zu, Size: %zu]",blocks[i].start_offset,blocks[i].size);
+            }
+        }
+        printf("\n");
+    }
+}
+
 int allocate_memory(size_t size){
     if(size==0||size>pool_size){
         printf("Invalid size\n");
@@ -98,28 +173,16 @@ int allocate_memory(size_t size){
     }
     long idx=find_block(size);
     if(idx==-1){
-        printf("cannot allocate memory\n");
+        printf("Allocation failed: no contiguous free block is large enough.\n");
+        report_fragmentation(size);
         return -1;
     }
     if(blocks[idx].size>size){
-        if(block_count==block_capacity){
-            struct Memory *tmp=realloc(blocks,block_capacity*2*sizeof(struct Memory));
-            if(tmp==NULL){
-                printf("Memory allocation failed\n");
-                return -1;
-            }
-            blocks=tmp;
-            block_capacity*=2;
+        if(ensure_capacity()==-1){
+            return -1;
         }
-        for(size_t i=block_count;i>(size_t)idx+1;i--){
-            blocks[i]=blocks[i-1];
-        }
-        blocks[idx+1].start_offset=blocks[idx].start_offset+size;
-        blocks[idx+1].size=blocks[idx].size-size;
-        blocks[idx+1].allocationId=0;
-        blocks[idx+1].status=0;
+        insert_free_block((size_t)idx+1,blocks[idx].start_offset+size,blocks[idx].size-size);
         blocks[idx].size=size;
-        block_count++;
     }
     blocks[idx].status=1;
     blocks[idx].allocationId=next_id++;
@@ -159,6 +222,98 @@ int release_memory(int id){
     }
     printf("Allocation already released\n");
     return -1;
+}
+
+
+int resize_memory(int id,size_t new_size){
+    if(id<=0||id>=next_id){
+        printf("Unknown allocation ID\n");
+        return -1;
+    }
+    if(new_size==0||new_size>pool_size){
+        printf("Invalid size\n");
+        return -1;
+    }
+    long found=-1;
+    for(size_t i=0;i<block_count;i++){
+        if(blocks[i].status==1 && blocks[i].allocationId==id){
+            found=(long)i;
+            break;
+        }
+    }
+    if(found==-1){
+        printf("Allocation already released\n");
+        return -1;
+    }
+    size_t idx=(size_t)found;
+    size_t old_size=blocks[idx].size;
+
+    if(new_size==old_size){
+        printf("Allocation already has that size.\n");
+        return 0;
+    }
+
+    /* shrink */
+    if(new_size<old_size){
+        size_t diff=old_size-new_size;
+        if(idx+1<block_count && blocks[idx+1].status==0){
+            blocks[idx+1].start_offset-=diff;
+            blocks[idx+1].size+=diff;
+        } else {
+            if(ensure_capacity()==-1){
+                printf("Resize failed. Allocation unchanged.\n");
+                return -1;
+            }
+            insert_free_block(idx+1,blocks[idx].start_offset+new_size,diff);
+        }
+        blocks[idx].size=new_size;
+        merge_free_blocks();
+        printf("Allocation %d shrunk to %zu bytes.\n",id,new_size);
+        return 0;
+    }
+
+    /* grow in place */
+    size_t need=new_size-old_size;
+    if(idx+1<block_count && blocks[idx+1].status==0 && blocks[idx+1].size>=need){
+        blocks[idx].size=new_size;
+        blocks[idx+1].start_offset+=need;
+        blocks[idx+1].size-=need;
+        if(blocks[idx+1].size==0){
+            remove_block(idx+1);
+        }
+        printf("Allocation %d expanded in place to %zu bytes.\n",id,new_size);
+        return 0;
+    }
+
+    /* move to another free block */
+    long target=find_block(new_size);
+    if(target==-1){
+        printf("Resize failed: no contiguous free block is large enough. Allocation unchanged.\n");
+        report_fragmentation(new_size);
+        return -1;
+    }
+    size_t t=(size_t)target;
+    if(blocks[t].size>new_size){
+        if(ensure_capacity()==-1){
+            printf("Resize failed. Allocation unchanged.\n");
+            return -1;
+        }
+        insert_free_block(t+1,blocks[t].start_offset+new_size,blocks[t].size-new_size);
+        blocks[t].size=new_size;
+        if(idx>t){
+            idx++;
+        }
+    }
+    for(size_t i=0;i<old_size;i++){
+        pool[blocks[t].start_offset+i]=pool[blocks[idx].start_offset+i];
+    }
+    blocks[t].status=1;
+    blocks[t].allocationId=id;
+    blocks[idx].status=0;
+    blocks[idx].allocationId=0;
+    printf("Allocation %d moved to Start: %zu, Size: %zu\n",id,blocks[t].start_offset,new_size);
+    merge_free_blocks();
+    return 0;
 }
 
 long read_number(){
@@ -228,14 +383,18 @@ int main(){
                 printf("Allocation ID: ");
                 release_memory((int)read_number());
                 break;
-            case 3:
-                printf("Not implemented yet\n");
+            case 3: {
+                printf("Allocation ID: ");
+                int rid=(int)read_number();
+                printf("New size: ");
+                resize_memory(rid,(size_t)read_number());
                 break;
+            }
             case 4:
                 display_map();
                 break;
             case 5:
-                printf("Not implemented yet\n");
+                display_stats();
                 break;
             case 6:
                 choose_strategy();
